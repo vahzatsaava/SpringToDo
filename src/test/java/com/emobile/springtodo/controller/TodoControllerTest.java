@@ -1,40 +1,46 @@
 package com.emobile.springtodo.controller;
 
 import com.emobile.springtodo.entity.User;
-import com.emobile.springtodo.model.TodoCreateRequest;
-import com.emobile.springtodo.model.TodoResponse;
-import com.emobile.springtodo.model.TodoUpdateRequest;
+import com.emobile.springtodo.dto.TodoCreateRequest;
+import com.emobile.springtodo.dto.TodoResponse;
+import com.emobile.springtodo.dto.TodoUpdateRequest;
 import com.emobile.springtodo.repository.UserRepository;
 import com.emobile.springtodo.repository.todo.TodoRepository;
 import com.emobile.springtodo.service.todo.TodoServiceImpl;
 import com.emobile.springtodo.utils.AbstractRestControllerBaseTest;
+import com.emobile.springtodo.utils.RedisTestContainerConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ContextConfiguration;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
 import java.security.Principal;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.util.Objects;
+
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
-@Testcontainers
 @SpringBootTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class TodoControllerTest extends AbstractRestControllerBaseTest {
+@ContextConfiguration(classes = {RedisTestContainerConfig.class})
+@Testcontainers
+class TodoControllerTest extends AbstractRestControllerBaseTest{
 
     @Autowired
     private TodoServiceImpl todoService;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @Autowired
     private UserRepository userRepository;
@@ -49,8 +55,8 @@ class TodoControllerTest extends AbstractRestControllerBaseTest {
     void cleanDatabase() {
         jdbcTemplate.execute("TRUNCATE TABLE todo RESTART IDENTITY CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE users RESTART IDENTITY CASCADE");
+        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().flushDb();
     }
-
 
     @Test
     void saveTodo_ShouldSaveTodo() {
@@ -79,11 +85,10 @@ class TodoControllerTest extends AbstractRestControllerBaseTest {
         todoRepository.saveTodo(todoCreateRequest, user.getId());
 
 
-        Optional<TodoResponse> response = todoService.findTodoById(1L, principal);
+        TodoResponse response = todoService.findTodoById(1L, principal);
 
-        assertTrue(response.isPresent());
-        assertEquals("New Todo", response.get().getTitle());
-        assertEquals("Description", response.get().getDescription());
+        assertEquals("New Todo", response.getTitle());
+        assertEquals("Description", response.getDescription());
     }
 
     @Test

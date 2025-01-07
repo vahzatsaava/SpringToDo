@@ -19,7 +19,6 @@ springdoc:
     path: /v3/api-docs
 
 
-
   data:
     redis:
       host: localhost

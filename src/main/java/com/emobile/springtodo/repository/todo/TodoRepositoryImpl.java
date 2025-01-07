@@ -1,8 +1,8 @@
 package com.emobile.springtodo.repository.todo;
 
-import com.emobile.springtodo.model.TodoCreateRequest;
-import com.emobile.springtodo.model.TodoResponse;
-import com.emobile.springtodo.model.TodoUpdateRequest;
+import com.emobile.springtodo.dto.TodoCreateRequest;
+import com.emobile.springtodo.dto.TodoResponse;
+import com.emobile.springtodo.dto.TodoUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -33,8 +33,8 @@ public class TodoRepositoryImpl implements TodoRepository {
     }
 
     @Override
-    public TodoResponse updateTodo(TodoUpdateRequest request, Long userId) {
-        int rowsUpdated = jdbcTemplate.update(
+    public int updateTodo(TodoUpdateRequest request, Long userId) {
+        return jdbcTemplate.update(
                 UPDATE_TODO,
                 request.getTitle(),
                 request.getDescription(),
@@ -43,20 +43,8 @@ public class TodoRepositoryImpl implements TodoRepository {
                 request.getId(),
                 userId
         );
-
-        if (rowsUpdated == 0) {
-            throw new RuntimeException("Todo not found or permission denied.");
-        }
-
-        return new TodoResponse(
-                request.getId(),
-                request.getTitle(),
-                request.getDescription(),
-                request.isCompleted(),
-                LocalDateTime.now(),
-                LocalDateTime.now()
-        );
     }
+
 
     @Override
     @Cacheable(value = "pagedTodos", key = "#userId + '-' + #page + '-' + #size")

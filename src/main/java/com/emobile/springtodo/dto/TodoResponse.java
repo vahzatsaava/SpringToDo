@@ -1,14 +1,14 @@
-package com.emobile.springtodo.model;
+package com.emobile.springtodo.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Data
-@AllArgsConstructor
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class TodoResponse{
 
     private Long id;

@@ -1,8 +1,8 @@
 package com.emobile.springtodo.repository.todo;
 
-import com.emobile.springtodo.model.TodoCreateRequest;
-import com.emobile.springtodo.model.TodoResponse;
-import com.emobile.springtodo.model.TodoUpdateRequest;
+import com.emobile.springtodo.dto.TodoCreateRequest;
+import com.emobile.springtodo.dto.TodoResponse;
+import com.emobile.springtodo.dto.TodoUpdateRequest;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,7 +16,7 @@ public interface TodoRepository {
 
     void saveTodo(TodoCreateRequest request, Long userId);
 
-    TodoResponse updateTodo(TodoUpdateRequest request, Long userId);
+    int updateTodo(TodoUpdateRequest request, Long userId);
 
     Optional<TodoResponse> findTodoById(Long toDoId,Long userId);
 
