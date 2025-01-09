@@ -1,44 +1,46 @@
-image: docker:latest
+image: maven:3.9.4-eclipse-temurin-21
 
-services:
-  - docker:20.10.24-dind
+stages:
+  - build
+  - test
 
 variables:
   MAVEN_OPTS: "-Dfile.encoding=UTF-8"
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_DRIVER: overlay2
-  TESTCONTAINERS_RYUK_DISABLED: "true"
-  SPRING_PROFILES_ACTIVE: test
-
-stages:
-  - test
-  - build
 
 cache:
   paths:
     - .m2/repository
 
-before_script:
-  - docker info
-
-test:
-  stage: test
-  image: maven:3.8.8-openjdk-17
-  script:
-    - ./mvnw clean test
-  artifacts:
-    when: always
-    paths:
-      - target/surefire-reports/*.xml
-      - target/*.log
-    expire_in: 1 week
-
 build:
   stage: build
-  image: maven:3.8.8-openjdk-17
   script:
+    - chmod +x mvnw
     - ./mvnw clean package -DskipTests
   artifacts:
     paths:
       - target/*.jar
-    expire_in: 1 week
+  only:
+    - dev
+    - main
+
+test:
+  stage: test
+  services:
+    - name: postgres:15
+      alias: postgres
+    - name: redis:7
+      alias: redis
+  variables:
+    POSTGRES_USER: test_user
+    POSTGRES_PASSWORD: test_password
+    POSTGRES_DB: test_db
+    SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/test_db
+    SPRING_DATASOURCE_USERNAME: test_user
+    SPRING_DATASOURCE_PASSWORD: test_password
+    SPRING_REDIS_HOST: redis
+  script:
+    - chmod +x mvnw
+    - ./mvnw clean test
+  only:
+    - dev
+    - main
