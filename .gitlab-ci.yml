@@ -38,3 +38,7 @@ test:
   only:
     - dev
     - main
+  tags:
+    - docker
+  resource_group: high-memory
+
