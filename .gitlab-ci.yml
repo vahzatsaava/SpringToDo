@@ -1,14 +1,14 @@
-image: maven:3.9.4-eclipse-temurin-21
+image: docker:latest
 
 services:
-  - docker:dind
+  - docker:20.10.24-dind
 
 variables:
+  MAVEN_OPTS: "-Dfile.encoding=UTF-8"
   DOCKER_HOST: tcp://docker:2375
   DOCKER_DRIVER: overlay2
   TESTCONTAINERS_RYUK_DISABLED: "true"
   SPRING_PROFILES_ACTIVE: test
-  MAVEN_OPTS: "-Dfile.encoding=UTF-8"
 
 stages:
   - test
@@ -18,23 +18,28 @@ cache:
   paths:
     - .m2/repository
 
+before_script:
+  # Подтверждение запуска Docker демона
+  - docker info
+
 test:
   stage: test
+  image: maven:3.8.8-openjdk-21
   script:
-    - chmod +x mvnw
-    - ./mvnw clean test -Dspring.profiles.active=test
-  only:
-    - merge_requests
-    - dev
+    - ./mvnw clean test
+  artifacts:
+    when: always
+    paths:
+      - target/surefire-reports/*.xml
+      - target/*.log
+    expire_in: 1 week
 
 build:
   stage: build
+  image: maven:3.8.8-openjdk-21
   script:
-    - chmod +x mvnw
     - ./mvnw clean package -DskipTests
   artifacts:
     paths:
       - target/*.jar
-  only:
-    - dev
-    - main
+    expire_in: 1 week
