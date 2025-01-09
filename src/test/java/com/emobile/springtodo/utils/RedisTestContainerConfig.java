@@ -5,6 +5,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+
+import java.time.Duration;
 
 @TestConfiguration
 public class RedisTestContainerConfig {
@@ -13,7 +16,8 @@ public class RedisTestContainerConfig {
 
     static {
         redisContainer = new GenericContainer<>("redis:7.0.11-alpine")
-                .withExposedPorts(6379);
+                .withExposedPorts(6379)
+                .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(2)));
         redisContainer.start();
     }
 
