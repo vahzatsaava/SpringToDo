@@ -2,21 +2,28 @@ stages:
   - test
   - build
 
+services:
+  - postgres:13
+
+variables:
+  POSTGRES_DB: testdb
+  POSTGRES_USER: testuser
+  POSTGRES_PASSWORD: testpassword
+  POSTGRES_HOST: postgres
+
 default:
   image: maven:3.9.4-eclipse-temurin-21
-
-cache:
-  paths:
-    - .m2/repository/
+  cache:
+    paths:
+      - .m2/repository/
 
 test:
   stage: test
-  only:
-    - merge_requests
-    - dev
   script:
-    - echo "Running tests for Spring Boot application..."
+    - echo "Running tests..."
     - mvn test
+  services:
+    - postgres:13
   artifacts:
     when: always
     reports:
@@ -27,11 +34,9 @@ test:
 
 build:
   stage: build
-  only:
-    - dev
   script:
-    - echo "Building Spring Boot application..."
-    - mvn clean install
+    - echo "Building project..."
+    - mvn clean package
   artifacts:
     paths:
       - target/*.jar
