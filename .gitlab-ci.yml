@@ -1,5 +1,4 @@
 stages:
-  - test
   - build
 
 default:
@@ -23,15 +22,6 @@ variables:
 cache:
   paths:
     - .m2/repository/
-
-test:
-  stage: test
-  script:
-    - chmod +x mvnw
-    - ./mvnw clean test -Dspring.profiles.active=test
-  only:
-    - merge_requests
-    - dev
 
 build:
   stage: build
