@@ -1,34 +1,23 @@
+image: maven:3.9.4-eclipse-temurin-21
+
 stages:
   - build
 
-default:
-  image: maven:3.9.4-eclipse-temurin-21
-
-services:
-  - name: postgres:14
-    alias: postgres
-  - name: redis:7
-    alias: redis
-
 variables:
-  POSTGRES_DB: todo_db
-  POSTGRES_USER: user
-  POSTGRES_PASSWORD: password
-  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/todo_db"
-  SPRING_DATASOURCE_USERNAME: "user"
-  SPRING_DATASOURCE_PASSWORD: "password"
-  REDIS_HOST: "redis"
+  MAVEN_OPTS: "-Dfile.encoding=UTF-8"
 
 cache:
   paths:
-    - .m2/repository/
+    - .m2/repository
 
 build:
   stage: build
   script:
-    - echo "Building application..."
-    - mvn clean install
+    - chmod +x mvnw
+    - ./mvnw clean package -DskipTests
   artifacts:
     paths:
       - target/*.jar
-    expire_in: 1 week
+  only:
+    - dev
+    - main
