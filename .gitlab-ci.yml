@@ -6,7 +6,7 @@ services:
 variables:
   DOCKER_HOST: tcp://docker:2375
   DOCKER_DRIVER: overlay2
-  TESTCONTAINERS_RYUK_DISABLED: "true"
+  TESTCONTAINERS_RYUK_DISABLED:
   SPRING_PROFILES_ACTIVE: test
   MAVEN_OPTS: "-Dfile.encoding=UTF-8"
 
@@ -22,7 +22,7 @@ test:
   stage: test
   script:
     - chmod +x mvnw
-    - ./mvnw clean test
+    - ./mvnw clean test -Dspring.profiles.active=test
   only:
     - merge_requests
     - dev
