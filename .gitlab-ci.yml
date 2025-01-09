@@ -5,30 +5,32 @@ stages:
 default:
   image: maven:3.9.4-eclipse-temurin-21
 
-cache:
-  paths:
-    - .m2/repository/
-
-variables:
-  MAVEN_CLI_OPTS: "-B"
-  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/todo_db"
-  SPRING_DATASOURCE_USERNAME: "user"
-  SPRING_DATASOURCE_PASSWORD: "password"
-  REDIS_HOST: "redis"
-
 services:
   - name: postgres:14
     alias: postgres
   - name: redis:7
     alias: redis
 
+variables:
+  POSTGRES_DB: todo_db
+  POSTGRES_USER: user
+  POSTGRES_PASSWORD: password
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/todo_db"
+  SPRING_DATASOURCE_USERNAME: "user"
+  SPRING_DATASOURCE_PASSWORD: "password"
+  REDIS_HOST: "redis"
+
+cache:
+  paths:
+    - .m2/repository/
+
 test:
   stage: test
   script:
-    - echo "Waiting for PostgreSQL and Redis to be ready..."
+    - echo "Waiting for PostgreSQL to be ready..."
     - for i in {1..30}; do pg_isready -h postgres -p 5432 && break || sleep 1; done
-    - echo "Running tests for Spring Boot application..."
-    - mvn $MAVEN_CLI_OPTS test
+    - echo "Running tests..."
+    - mvn test
   artifacts:
     when: always
     reports:
@@ -40,8 +42,8 @@ test:
 build:
   stage: build
   script:
-    - echo "Building Spring Boot application..."
-    - mvn $MAVEN_CLI_OPTS clean install
+    - echo "Building application..."
+    - mvn clean install
   artifacts:
     paths:
       - target/*.jar
