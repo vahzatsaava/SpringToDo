@@ -1,8 +1,11 @@
-image: maven:3.9.4-eclipse-temurin-21
+image: docker:24.0.6
 
 stages:
   - test
   - build
+
+services:
+  - docker:dind
 
 variables:
   MAVEN_OPTS: "-Dfile.encoding=UTF-8"
@@ -14,13 +17,13 @@ cache:
   paths:
     - .m2/repository
 
-
 test:
   stage: test
-  services:
-    - docker:dind
   before_script:
-    - echo "Starting test stage with integration tests..."
+
+    - apk add --no-cache openjdk17 maven
+    - java -version
+    - mvn -version
     - docker info
   script:
     - chmod +x mvnw
@@ -34,8 +37,13 @@ test:
     - dev
     - main
 
+
 build:
   stage: build
+  before_script:
+    - apk add --no-cache openjdk17 maven
+    - java -version
+    - mvn -version
   script:
     - chmod +x mvnw
     - ./mvnw clean package -DskipTests
