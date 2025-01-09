@@ -19,12 +19,11 @@ cache:
     - .m2/repository
 
 before_script:
-  # Подтверждение запуска Docker демона
   - docker info
 
 test:
   stage: test
-  image: maven:3.8.8-openjdk-21
+  image: maven:3.8.8-openjdk-17
   script:
     - ./mvnw clean test
   artifacts:
@@ -36,7 +35,7 @@ test:
 
 build:
   stage: build
-  image: maven:3.8.8-openjdk-21
+  image: maven:3.8.8-openjdk-17
   script:
     - ./mvnw clean package -DskipTests
   artifacts:
