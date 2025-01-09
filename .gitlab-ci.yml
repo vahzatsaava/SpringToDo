@@ -1,11 +1,18 @@
 image: maven:3.9.4-eclipse-temurin-21
 
+services:
+  - docker:dind
+
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
+  TESTCONTAINERS_RYUK_DISABLED: "true"
+  SPRING_PROFILES_ACTIVE: test
+  MAVEN_OPTS: "-Dfile.encoding=UTF-8"
+
 stages:
   - test
   - build
-
-variables:
-  MAVEN_OPTS: "-Dfile.encoding=UTF-8"
 
 cache:
   paths:
