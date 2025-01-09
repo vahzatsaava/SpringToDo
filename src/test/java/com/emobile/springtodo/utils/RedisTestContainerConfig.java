@@ -12,7 +12,7 @@ public class RedisTestContainerConfig {
     static final GenericContainer<?> redisContainer;
 
     static {
-        redisContainer = new GenericContainer<>("redis:7.0.11-alpine")
+        redisContainer = new GenericContainer<>("redis:7.0-alpine")
                 .withExposedPorts(6379);
         redisContainer.start();
     }
