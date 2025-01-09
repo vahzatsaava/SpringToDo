@@ -1,42 +1,38 @@
-image: maven:3.9.4-eclipse-temurin-21
-
-services:
-  - docker:dind
-
-variables:
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_DRIVER: overlay2
-  TESTCONTAINERS_RYUK_DISABLED:
-  SPRING_PROFILES_ACTIVE: test
-  MAVEN_OPTS: "-Dfile.encoding=UTF-8"
-
 stages:
   - test
   - build
 
+default:
+  image: maven:3.9.4-eclipse-temurin-17
+
 cache:
   paths:
-    - .m2/repository
+    - .m2/repository/
 
 test:
   stage: test
-  script:
-    - chmod +x mvnw
-    - ./mvnw clean test -Dspring.profiles.active=test
   only:
     - merge_requests
     - dev
+  script:
+    - echo "Running tests for Spring Boot application..."
+    - mvn test
+  artifacts:
+    when: always
+    reports:
+      junit: target/surefire-reports/*.xml
+    paths:
+      - target/surefire-reports/
+    expire_in: 1 week
 
 build:
   stage: build
-  script:
-    - chmod +x mvnw
-    - ./mvnw clean package -DskipTests
-  artifacts:
-    paths:
-      - module1/target/*.jar
-      - module2/target/*.jar
-      - module3/target/*.jar
   only:
     - dev
-    - main
+  script:
+    - echo "Building Spring Boot application..."
+    - mvn clean install
+  artifacts:
+    paths:
+      - target/*.jar
+    expire_in: 1 week
