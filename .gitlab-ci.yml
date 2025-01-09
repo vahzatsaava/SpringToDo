@@ -1,0 +1,32 @@
+stages:
+  - test
+  - build
+
+variables:
+  MAVEN_CLI_OPTS: "-s .mvn/maven-settings.xml --batch-mode --errors --fail-at-end"
+  MAVEN_OPTS: "-Dfile.encoding=UTF-8"
+
+cache:
+  paths:
+    - .m2/repository
+
+test:
+  stage: test
+  script:
+    - ./mvnw clean test
+  only:
+    - merge_requests
+    - dev
+
+build:
+  stage: build
+  script:
+    - ./mvnw clean package -DskipTests
+  artifacts:
+    paths:
+      - module1/target/*.jar
+      - module2/target/*.jar
+      - module3/target/*.jar
+  only:
+    - dev
+    - main
