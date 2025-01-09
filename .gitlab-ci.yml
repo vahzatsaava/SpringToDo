@@ -6,14 +6,21 @@ stages:
 
 variables:
   MAVEN_OPTS: "-Dfile.encoding=UTF-8"
+  TESTCONTAINERS_RYUK_DISABLED: "true"
+  DOCKER_HOST: "tcp://docker:2375"
+  DOCKER_TLS_CERTDIR: ""
 
 cache:
   paths:
     - .m2/repository
 
-# Stage for running tests
 test:
   stage: test
+  services:
+    - docker:dind
+  before_script:
+    - echo "Starting test stage with integration tests..."
+    - docker info
   script:
     - chmod +x mvnw
     - ./mvnw clean verify
@@ -26,7 +33,6 @@ test:
     - dev
     - main
 
-# Stage for building the application
 build:
   stage: build
   script:
