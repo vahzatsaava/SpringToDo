@@ -6,34 +6,27 @@ stages:
 
 variables:
   MAVEN_OPTS: "-Dfile.encoding=UTF-8"
-  TESTCONTAINERS_HOST_OVERRIDE: "localhost"
-  DOCKER_HOST: "tcp://docker:2375"
-  DOCKER_TLS_CERTDIR: ""
-  TESTCONTAINERS_RYUK_DISABLED: "true"
-
-services:
-  - docker:dind
 
 cache:
   paths:
     - .m2/repository
 
+# Stage for running tests
 test:
   stage: test
   script:
     - chmod +x mvnw
-    - ./mvnw clean test
+    - ./mvnw clean verify
   artifacts:
-    reports:
-      junit: target/surefire-reports/*.xml
+    when: always
     paths:
-      - target/surefire-reports/
+      - target/surefire-reports/*.xml
+      - target/failsafe-reports/*.xml
   only:
     - dev
     - main
 
-
-
+# Stage for building the application
 build:
   stage: build
   script:
