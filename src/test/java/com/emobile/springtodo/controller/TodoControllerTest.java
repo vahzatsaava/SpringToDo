@@ -19,6 +19,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.jdbc.Sql;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import java.security.Principal;
 import java.util.List;
@@ -33,7 +34,7 @@ import static org.mockito.Mockito.when;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ContextConfiguration(classes = {RedisTestContainerConfig.class})
 @Testcontainers
-@ActiveProfiles("test")
+@Sql(scripts = {"/sql-test/user_create.sql", "/sql-test/todo_ceate.sql"}, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class TodoControllerTest extends AbstractRestControllerBaseTest{
 
     @Autowired
@@ -41,6 +42,7 @@ class TodoControllerTest extends AbstractRestControllerBaseTest{
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
     @Autowired
     private RedisTemplate redisTemplate;
 
@@ -55,10 +57,12 @@ class TodoControllerTest extends AbstractRestControllerBaseTest{
 
     @BeforeEach
     void cleanDatabase() {
+        System.out.println("Active profile: " + System.getProperty("spring.profiles.active"));
         jdbcTemplate.execute("TRUNCATE TABLE todo RESTART IDENTITY CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE users RESTART IDENTITY CASCADE");
         Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().flushDb();
     }
+
 
     @Test
     void saveTodo_ShouldSaveTodo() {
