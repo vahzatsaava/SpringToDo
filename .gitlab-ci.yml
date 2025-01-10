@@ -1,16 +1,25 @@
 image: maven:3.9.4-eclipse-temurin-21
 
+services:
+  - docker:dind
+
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+
 stages:
   - build
   - test
 
-variables:
-  MAVEN_OPTS: "-Dfile.encoding=UTF-8"
-
 cache:
   paths:
     - .m2/repository
-
+test:
+  stage: test
+  script:
+    - docker --version
+    - ./mvnw test -Dspring.profiles.active=test
+    -
 build:
   stage: build
   script:
@@ -19,16 +28,5 @@ build:
   artifacts:
     paths:
       - target/*.jar
-  only:
-    - dev
-    - main
 
-test:
-  stage: test
-  script:
-    - chmod +x mvnw
-    - ./mvnw test -Dspring.profiles.active=test
-  allow_failure: false
-  only:
-    - dev
-    - main
+
