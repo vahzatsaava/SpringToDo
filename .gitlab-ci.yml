@@ -1,4 +1,4 @@
-image: maven:3.9.4-eclipse-temurin-21
+image: docker:24.0.2
 
 services:
   - docker:dind
@@ -15,6 +15,20 @@ cache:
   paths:
     - .m2/repository
 
+before_script:
+  - apk add --no-cache openjdk-21-jdk maven
+  -
+test:
+  stage: test
+  script:
+    - echo "Checking Docker availability..."
+    - docker --version
+    - echo "Running tests with Maven..."
+    - ./mvnw test -Dspring.profiles.active=test
+  only:
+    - dev
+    - main
+    -
 build:
   stage: build
   script:
@@ -27,13 +41,4 @@ build:
     - dev
     - main
 
-test:
-  stage: test
-  script:
-    - echo "Checking Docker availability..."
-    - docker --version
-    - echo "Running tests with Maven..."
-    - ./mvnw test -Dspring.profiles.active=test
-  only:
-    - dev
-    - main
+
