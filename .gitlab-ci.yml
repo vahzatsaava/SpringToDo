@@ -7,12 +7,14 @@ stages:
 variables:
   MAVEN_OPTS: "-Dfile.encoding=UTF-8"
   DOCKER_HOST: "unix:///var/run/docker.sock"
+  TESTCONTAINERS_HOST_OVERRIDE: "host.docker.internal"
+  DOCKER_TLS_CERTDIR: ""
 
 cache:
   paths:
     - .m2/repository
 
-# Стадия сборки
+
 build:
   stage: build
   script:
@@ -25,14 +27,12 @@ build:
     - dev
     - main
 
-# Стадия тестирования
 test:
   stage: test
   services:
     - docker:dind
-  variables:
-    DOCKER_TLS_CERTDIR: ""
   script:
+    - docker ps
     - chmod +x mvnw
     - ./mvnw test
     - ./mvnw verify
