@@ -15,6 +15,7 @@ stages:
 cache:
   paths:
     - .m2/repository
+
 test:
   stage: test
   script:
@@ -25,7 +26,7 @@ test:
   only:
     - dev
     - main
-    -
+
 build:
   stage: build
   script:
@@ -37,5 +38,3 @@ build:
   only:
     - dev
     - main
-
-
