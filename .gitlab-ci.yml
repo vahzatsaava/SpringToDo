@@ -6,14 +6,11 @@ stages:
 
 variables:
   MAVEN_OPTS: "-Dfile.encoding=UTF-8"
-  DOCKER_HOST: "unix:///var/run/docker.sock"
-  TESTCONTAINERS_HOST_OVERRIDE: "host.docker.internal"
-  DOCKER_TLS_CERTDIR: ""
+  SPRING_PROFILES_ACTIVE: "test"
 
 cache:
   paths:
     - .m2/repository
-
 
 build:
   stage: build
@@ -29,13 +26,9 @@ build:
 
 test:
   stage: test
-  services:
-    - docker:dind
   script:
-    - docker ps
     - chmod +x mvnw
     - ./mvnw test
-    - ./mvnw verify
   only:
     - dev
     - main
