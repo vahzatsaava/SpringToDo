@@ -1,8 +1,10 @@
 package com.emobile.springtodo.repository;
 
 import com.emobile.springtodo.entity.User;
+import com.emobile.springtodo.utills.HibernateUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -11,28 +13,31 @@ import java.util.Optional;
 @Repository
 @RequiredArgsConstructor
 public class UserRepositoryImpl implements UserRepository {
-    private final JdbcTemplate jdbcTemplate;
 
 
     @Override
     public void save(User user) {
-        jdbcTemplate.update(INSERT_USER, user.getUsername(), user.getPassword(), user.getRole());
+
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+
+            session.persist(user);
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            throw e;
+        }
     }
 
     @Override
     public Optional<User> findByUsername(String username) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            User user = session.createQuery(SELECT_BY_USERNAME, User.class)
+                    .setParameter("username", username)
+                    .uniqueResult();
 
-        return jdbcTemplate.query(SELECT_BY_USERNAME, rs -> {
-            if (rs.next()) {
-                User user = new User();
-                user.setId(rs.getLong("id"));
-                user.setUsername(rs.getString("username"));
-                user.setPassword(rs.getString("password"));
-                user.setRole(rs.getString("role"));
-                return Optional.of(user);
-            }
-            return Optional.empty();
-        }, username);
+            return user != null ? Optional.of(user) : Optional.empty();
+        }
     }
-
 }

@@ -1,22 +1,25 @@
 package com.emobile.springtodo.mapper;
 
+import com.emobile.springtodo.dto.TodoCreateRequest;
 import com.emobile.springtodo.dto.TodoResponse;
 import com.emobile.springtodo.dto.TodoUpdateRequest;
+import com.emobile.springtodo.entity.Todo;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
-import java.time.LocalDateTime;
+@Mapper(componentModel = "spring")
+public interface TodoMapper {
 
-public class TodoMapper {
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
+    @Mapping(target = "updatedAt", expression = "java(java.time.LocalDateTime.now())")
+    Todo mapToTodo(TodoCreateRequest request, Long userId);
 
-    private TodoMapper() {}
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", expression = "java(java.time.LocalDateTime.now())")
+    Todo mapToUpdatedTodo(TodoUpdateRequest request);
 
-    public static TodoResponse mapToTodoResponse(TodoUpdateRequest request) {
-        return new TodoResponse(
-                request.getId(),
-                request.getTitle(),
-                request.getDescription(),
-                request.isCompleted(),
-                LocalDateTime.now(),
-                LocalDateTime.now()
-        );
-    }
+    TodoResponse mapToTodoResponse(Todo todo);
+
+    TodoResponse mapToTodo(TodoUpdateRequest request, Long userId);
 }
