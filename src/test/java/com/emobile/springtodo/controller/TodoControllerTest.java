@@ -13,6 +13,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -26,12 +29,14 @@ import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TodoController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 class TodoControllerTest {
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -78,20 +83,30 @@ class TodoControllerTest {
     }
 
     @Test
-    void getAllTodosWithPagination_ShouldReturnTodoList() throws Exception {
-        TodoResponse response = getTodoResponse();
+    void getAllTodosWithPagination_ShouldReturnPagedTodoList() throws Exception {
 
-        Mockito.when(todoService.allTodosByPrincipalWithPagination(any(Principal.class), eq(0), eq(10))).thenReturn(List.of(response));
+        TodoResponse response1 = getTodoResponse();
+        TodoResponse response2 = getTodoResponse();
+
+        List<TodoResponse> responses = List.of(response1, response2);
+        Page<TodoResponse> responsePage = new PageImpl<>(responses, PageRequest.of(0, 10), responses.size());
+
+        Mockito.when(todoService.allTodosByPrincipalWithPagination(any(Principal.class), eq(0), eq(10)))
+                .thenReturn(responsePage);
 
         mockMvc.perform(get("/v1/api/todos")
                         .param("page", "0")
                         .param("size", "10")
                         .principal(principal))
+                .andDo(print())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].title", is("Todo 1")))
-                .andExpect(jsonPath("$[0].description", is("Description 1")));
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].title", is("Todo 1")))
+                .andExpect(jsonPath("$.content[0].description", is("Description 1")))
+                .andExpect(jsonPath("$.content[1].title", is("Todo 1")))
+                .andExpect(jsonPath("$.content[1].description", is("Description 1")));
     }
+
 
     @Test
     void getAllCompletedTodos_ShouldReturnEmptyList() throws Exception {
@@ -155,4 +170,6 @@ class TodoControllerTest {
     private TodoResponse getTodoResponse() {
         return new TodoResponse(1L, "Todo 1", "Description 1", false, LocalDateTime.now(), LocalDateTime.now());
     }
+
+
 }

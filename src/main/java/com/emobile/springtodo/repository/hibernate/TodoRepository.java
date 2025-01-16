@@ -1,27 +1,23 @@
 package com.emobile.springtodo.repository.hibernate;
-
-import com.emobile.springtodo.dto.TodoCreateRequest;
-import com.emobile.springtodo.dto.TodoUpdateRequest;
 import com.emobile.springtodo.entity.Todo;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+@Repository
+public interface TodoRepository extends JpaRepository<Todo, Long> {
 
-public interface TodoRepository {
 
-    String SELECT_ALL_TODOS = "FROM Todo WHERE userId = :userId";
-    String SELECT_COMPLETED_TODOS = "FROM Todo WHERE userId = :userId AND completed = true";
-    String SELECT_TODO_BY_ID = "FROM Todo WHERE id = :id AND userId = :userId";
+    Optional<Todo> findByIdAndUserId(Long id, Long userId);
 
-    String USER_ID = "userId";
+    Page<Todo> findAllByUserId(Long userId, Pageable pageable);
 
-    void saveTodo(TodoCreateRequest request, Long userId);
+    @Query("SELECT t FROM Todo t WHERE t.userId = :userId AND t.completed = true")
+    List<Todo> findCompletedTodosByUserId(@Param("userId") Long userId);
 
-    Todo updateTodo(TodoUpdateRequest request, Long userId);
-
-    Optional<Todo> findTodoById(Long toDoId,Long userId);
-
-    List<Todo> allTodosByUserIdWithPagination(Long userId, int page, int size);
-
-    List<Todo> allTodosCompletedByUserId(Long userId);
 }

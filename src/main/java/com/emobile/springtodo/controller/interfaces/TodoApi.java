@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,9 +54,9 @@ public interface TodoApi {
             @ApiResponse(responseCode = "200", description = "Список задач успешно получен")
     })
     @GetMapping
-    List<TodoResponse> getAllTodosWithPagination(Principal principal,
-            @Parameter(description = "Номер страницы (по умолчанию 1)") @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "Размер страницы (по умолчанию 10)") @RequestParam(defaultValue = "10") int size
+    Page<TodoResponse> getAllTodosWithPagination(Principal principal,
+                                                 @Parameter(description = "Номер страницы (по умолчанию 1)") @RequestParam(defaultValue = "1") int page,
+                                                 @Parameter(description = "Размер страницы (по умолчанию 10)") @RequestParam(defaultValue = "10") int size
     );
 
     @Operation(summary = "Получить все завершённые задачи", description = "Возвращает список всех завершённых задач.")

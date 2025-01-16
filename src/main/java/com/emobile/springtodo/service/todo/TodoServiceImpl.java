@@ -1,7 +1,6 @@
 package com.emobile.springtodo.service.todo;
 
 import com.emobile.springtodo.entity.Todo;
-import com.emobile.springtodo.entity.User;
 import com.emobile.springtodo.dto.TodoCreateRequest;
 import com.emobile.springtodo.dto.TodoResponse;
 import com.emobile.springtodo.dto.TodoUpdateRequest;
@@ -10,14 +9,19 @@ import com.emobile.springtodo.mapper.TodoMapper;
 import com.emobile.springtodo.repository.UserRepository;
 import com.emobile.springtodo.repository.hibernate.TodoRepository;
 import com.emobile.springtodo.security.CustomUserDetails;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -31,42 +35,55 @@ public class TodoServiceImpl implements TodoService {
     @Override
     @CacheEvict(value = {"todos", "allTodos", "completedTodos"}, allEntries = true)
     public void saveTodo(TodoCreateRequest request, Principal principal) {
-        User user = userRepository.findByUsername(principal.getName()).orElseThrow();
-        todoRepository.saveTodo(request, user.getId());
+
+        Long userId = getUserIdFromPrincipal(principal);
+
+        Todo todo = Todo.builder()
+                .userId(userId)
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .completed(false)
+                .build();
+        todoRepository.save(todo);
     }
+
 
     @Override
     @CacheEvict(value = {"todos", "allTodos", "completedTodos"}, allEntries = true)
+    @Transactional
     public TodoResponse updateTodo(TodoUpdateRequest request, Principal principal) {
-        User user = userRepository.findByUsername(principal.getName())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        Todo updatedTodo = todoRepository.updateTodo(request, user.getId());
+        Long userId = getUserIdFromPrincipal(principal);
 
-        if (updatedTodo == null) {
-            throw new TodoNotFoundException("Todo not found or permission denied.");
-        }
-        return todoMapper.mapToTodoResponse(updatedTodo);
+        Todo todo = todoRepository.findByIdAndUserId(request.getId(), userId)
+                .orElseThrow(() -> new EntityNotFoundException("Todo not found or user mismatch."));
+
+        todo.setTitle(request.getTitle());
+        todo.setDescription(request.getDescription());
+        todo.setCompleted(request.isCompleted());
+        todo.setUpdatedAt(LocalDateTime.now());
+
+        return todoMapper.mapToTodoResponse(todo);
     }
 
 
     @Override
-    public List<TodoResponse> allTodosByPrincipalWithPagination(Principal principal, int page, int size) {
-        UsernamePasswordAuthenticationToken token = (UsernamePasswordAuthenticationToken) principal;
-        CustomUserDetails userDetails = (CustomUserDetails) token.getPrincipal();
-        Long userId = userDetails.getUserId();
+    public Page<TodoResponse> allTodosByPrincipalWithPagination(Principal principal, int page, int size) {
 
-        return todoRepository.allTodosByUserIdWithPagination(userId, page, size)
-                .stream()
-                .map(todoMapper::mapToTodoResponse)
-                .toList();
+        Long userId = getUserIdFromPrincipal(principal);
+
+        Pageable pageRequest = PageRequest.of(page, size);
+
+        return todoRepository.findAllByUserId(userId, pageRequest)
+                .map(todoMapper::mapToTodoResponse);
     }
 
 
     @Override
     public List<TodoResponse> allTodosCompletedByPrincipal(Principal principal) {
-        User user = userRepository.findByUsername(principal.getName()).orElseThrow();
-        return todoRepository.allTodosCompletedByUserId(user.getId())
+        Long userId = getUserIdFromPrincipal(principal);
+
+        return todoRepository.findCompletedTodosByUserId(userId)
                 .stream()
                 .map(todoMapper::mapToTodoResponse)
                 .toList();
@@ -74,9 +91,16 @@ public class TodoServiceImpl implements TodoService {
 
     @Override
     public TodoResponse findTodoById(Long id, Principal principal) {
-        User user = userRepository.findByUsername(principal.getName()).orElseThrow();
-        Todo todo = todoRepository.findTodoById(id, user.getId())
+        Long userId = getUserIdFromPrincipal(principal);
+
+        Todo todo = todoRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new TodoNotFoundException("Todo not found with id: " + id));
         return todoMapper.mapToTodoResponse(todo);
+    }
+
+    private Long getUserIdFromPrincipal(Principal principal) {
+        UsernamePasswordAuthenticationToken token = (UsernamePasswordAuthenticationToken) principal;
+        CustomUserDetails userDetails = (CustomUserDetails) token.getPrincipal();
+        return userDetails.getUserId();
     }
 }

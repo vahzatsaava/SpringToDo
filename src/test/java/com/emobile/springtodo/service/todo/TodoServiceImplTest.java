@@ -14,6 +14,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 import java.security.Principal;
@@ -25,17 +29,13 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TodoServiceImplTest {
 
     @InjectMocks
     private TodoServiceImpl todoService;
-
-    @Mock
-    private UserRepository userRepository;
 
     @Mock
     private TodoRepository todoRepository;
@@ -49,56 +49,103 @@ class TodoServiceImplTest {
 
     @Test
     void saveTodo_ShouldSaveTodo() {
-        TodoCreateRequest request = new TodoCreateRequest("New Todo", "Description");
 
-        when(principal.getName()).thenReturn("testUser");
-        when(userRepository.findByUsername("testUser")).thenReturn(Optional.of(getUser()));
+        TodoCreateRequest request = new TodoCreateRequest("New Todo", "Description");
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("testUser");
+
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+        when(userDetails.getUserId()).thenReturn(user.getId());
+
+        Principal principal = new UsernamePasswordAuthenticationToken(userDetails, null);
 
         todoService.saveTodo(request, principal);
 
-        verify(todoRepository).saveTodo(request, 1L);
+        verify(todoRepository, times(1)).save(argThat(todo ->
+                todo.getUserId().equals(1L) &&
+                        todo.getTitle().equals("New Todo") &&
+                        todo.getDescription().equals("Description") &&
+                        !todo.isCompleted()
+        ));
     }
 
     @Test
     void updateTodo_ShouldUpdateTodo() {
-        Todo updatedTodo = getTodo();
+        Long todoId = 1L;
+        TodoUpdateRequest request = new TodoUpdateRequest(todoId, "Updated Todo", "description", true);
+        User user = new User();
+        user.setId(1L);
+        user.setUsername("testUser");
 
-        TodoUpdateRequest request = new TodoUpdateRequest(1L, "Updated Title", "Updated Desc", true);
-        User user = getUser();
-        when(principal.getName()).thenReturn(user.getUsername());
-        when(userRepository.findByUsername(user.getUsername())).thenReturn(Optional.of(user));
-        when(todoRepository.updateTodo(request, user.getId())).thenReturn(updatedTodo);
-        when(todoMapper.mapToTodoResponse(any(Todo.class))).thenReturn(getTodoResponse());
+        Todo existingTodo = getTodo();
+
+        TodoResponse expectedResponse = getTodoResponse();
+
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+        when(userDetails.getUserId()).thenReturn(user.getId());
+
+        Principal principal = new UsernamePasswordAuthenticationToken(userDetails, null);
+
+        when(todoRepository.findByIdAndUserId(todoId, user.getId())).thenReturn(Optional.of(existingTodo));
+        when(todoMapper.mapToTodoResponse(existingTodo)).thenReturn(expectedResponse);
+
 
         TodoResponse response = todoService.updateTodo(request, principal);
 
-        assertEquals(updatedTodo.getId(), response.getId());
+
+        assertNotNull(response);
+        assertEquals(todoId, response.getId());
+        assertEquals(request.getTitle(), response.getTitle());
+        assertEquals(request.getDescription(), response.getDescription());
         assertTrue(response.isCompleted());
 
-        verify(todoRepository).updateTodo(request, user.getId());
-    }
 
+        verify(todoRepository, times(1)).findByIdAndUserId(todoId, user.getId());
+        verify(todoMapper, times(1)).mapToTodoResponse(existingTodo);
+        verify(todoRepository, never()).save(any());
+
+    }
 
     @Test
-    void allTodosByPrincipal_ShouldReturnTodos() {
-        Todo updatedTodo = new Todo();
-        updatedTodo.setId(1L);
-        updatedTodo.setUserId(2L);
-        updatedTodo.setCompleted(true);
-        updatedTodo.setTitle("Hello world");
+    void allTodosByPrincipalWithPagination_ShouldReturnPagedTodoResponses() {
 
-        List<Todo> todos = List.of(updatedTodo);
-        CustomUserDetails userDetails = new CustomUserDetails(1L, "testUser", "password", new ArrayList<>());
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null);
+        int page = 0;
+        int size = 5;
+        Long userId = 1L;
+        Pageable pageable = PageRequest.of(page, size);
 
-        when(todoRepository.allTodosByUserIdWithPagination(eq(1L), anyInt(), anyInt())).thenReturn(todos);
+        Todo todo1 = getTodo();
+        Todo todo2 = getTodo();
 
-        List<TodoResponse> result = todoService.allTodosByPrincipalWithPagination(authToken, 1, 10);
+        List<Todo> todos = List.of(todo1, todo2);
+        Page<Todo> todoPage = new PageImpl<>(todos, pageable, todos.size());
 
-        assertEquals(1, result.size());
-        verify(todoRepository).allTodosByUserIdWithPagination(1L, 1, 10);
+        TodoResponse response1 = getTodoResponse();
+        TodoResponse response2 = getTodoResponse();
+
+        UsernamePasswordAuthenticationToken authToken = mock(UsernamePasswordAuthenticationToken.class);
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+
+        when(authToken.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getUserId()).thenReturn(userId);
+        when(todoRepository.findAllByUserId(userId, pageable)).thenReturn(todoPage);
+        when(todoMapper.mapToTodoResponse(todo1)).thenReturn(response1);
+        when(todoMapper.mapToTodoResponse(todo2)).thenReturn(response2);
+
+        Page<TodoResponse> result = todoService.allTodosByPrincipalWithPagination(authToken, page, size);
+
+        assertNotNull(result);
+        assertEquals(2, result.getTotalElements());
+        assertEquals(2, result.getContent().size());
+        assertEquals("Updated Todo", result.getContent().get(0).getTitle());
+        assertEquals("Updated Todo", result.getContent().get(1).getTitle());
+
+        // Verify interactions
+        verify(todoRepository, times(1)).findAllByUserId(userId, pageable);
+        verify(todoMapper, times(1)).mapToTodoResponse(todo1);
+        verify(todoMapper, times(1)).mapToTodoResponse(todo2);
     }
-
 
 
 
@@ -107,40 +154,42 @@ class TodoServiceImplTest {
         Todo updatedTodo = getTodo();
 
         List<Todo> todos = List.of(updatedTodo);
+        Long userId = 1L;
 
-        when(principal.getName()).thenReturn("testUser");
-        when(userRepository.findByUsername("testUser")).thenReturn(Optional.of(getUser()));
-        when(todoRepository.allTodosCompletedByUserId(1L)).thenReturn(todos);
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+        when(userDetails.getUserId()).thenReturn(userId);
+
+        Principal principal = new UsernamePasswordAuthenticationToken(userDetails, null);
+        when(todoRepository.findCompletedTodosByUserId(1L)).thenReturn(todos);
 
         List<TodoResponse> result = todoService.allTodosCompletedByPrincipal(principal);
 
         assertEquals(1, result.size());
-        verify(todoRepository).allTodosCompletedByUserId(1L);
+        verify(todoRepository).findCompletedTodosByUserId(1L);
     }
+
 
     @Test
     void findTodoById_ShouldReturnTodo() {
         Todo updatedTodo = getTodo();
+        Long userId = 1L;
 
-        when(principal.getName()).thenReturn("testUser");
-        when(userRepository.findByUsername("testUser")).thenReturn(Optional.of(getUser()));
-        when(todoRepository.findTodoById(1L, 1L)).thenReturn(Optional.of(updatedTodo));
+        CustomUserDetails userDetails = mock(CustomUserDetails.class);
+        when(userDetails.getUserId()).thenReturn(userId);
+
+        Principal principal = new UsernamePasswordAuthenticationToken(userDetails, null);
+
+        when(todoRepository.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(updatedTodo));
         when(todoMapper.mapToTodoResponse(any(Todo.class))).thenReturn(getTodoResponse());
 
 
         TodoResponse result = todoService.findTodoById(1L, principal);
 
         assertEquals(updatedTodo.isCompleted(), result.isCompleted());
-        verify(todoRepository).findTodoById(1L, 1L);
+        verify(todoRepository).findByIdAndUserId(1L, 1L);
     }
 
-    @Test
-    void findTodoById_ShouldThrowException_WhenUserNotFound() {
-        when(principal.getName()).thenReturn("testUser");
-        when(userRepository.findByUsername("testUser")).thenReturn(Optional.empty());
 
-        assertThrows(NoSuchElementException.class, () -> todoService.findTodoById(1L, principal));
-    }
 
     private User getUser() {
         User mockUser = new User();
@@ -162,6 +211,5 @@ class TodoServiceImplTest {
         updatedTodo.setTitle("Hello world");
         return updatedTodo;
     }
-
 
 }

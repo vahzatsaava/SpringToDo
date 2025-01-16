@@ -8,6 +8,7 @@ import com.emobile.springtodo.service.todo.TodoService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -34,7 +35,7 @@ public class TodoController implements TodoApi {
     }
 
     @Override
-    public List<TodoResponse> getAllTodosWithPagination( Principal principal,int page, int size) {
+    public Page<TodoResponse> getAllTodosWithPagination(Principal principal, int page, int size) {
         return todoService.allTodosByPrincipalWithPagination(principal, page, size);
     }
 
