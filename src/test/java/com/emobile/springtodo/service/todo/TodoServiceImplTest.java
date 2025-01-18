@@ -4,9 +4,12 @@ import com.emobile.springtodo.entity.User;
 import com.emobile.springtodo.dto.TodoCreateRequest;
 import com.emobile.springtodo.dto.TodoResponse;
 import com.emobile.springtodo.dto.TodoUpdateRequest;
+import com.emobile.springtodo.exception.TodoNotFoundException;
 import com.emobile.springtodo.repository.UserRepository;
 import com.emobile.springtodo.repository.todo.TodoRepository;
 import com.emobile.springtodo.security.CustomUserDetails;
+import com.emobile.springtodo.security.JwtUtil;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,114 +19,104 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 
 import java.security.Principal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TodoServiceImplTest {
 
-    @InjectMocks
-    private TodoServiceImpl todoService;
-
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
+     @Mock
     private TodoRepository todoRepository;
 
     @Mock
-    private Principal principal;
+    private JwtUtil jwtUtil;
 
+    @InjectMocks
+    private TodoServiceImpl todoService;
+
+    private Principal principal;
+    private CustomUserDetails userDetails;
+
+    @BeforeEach
+    void setUp() {
+        userDetails = new CustomUserDetails(1L, "testUser", "password", List.of());
+        principal = new UsernamePasswordAuthenticationToken(userDetails, null);
+    }
 
     @Test
-    void saveTodo_ShouldSaveTodo() {
-        TodoCreateRequest request = new TodoCreateRequest("New Todo", "Description");
-
-        when(principal.getName()).thenReturn("testUser");
-        when(userRepository.findByUsername("testUser")).thenReturn(Optional.of(getUser()));
+    void saveTodo_ShouldCallRepository() {
+        TodoCreateRequest request = new TodoCreateRequest("Test Task", "dsfdfsd");
+        doNothing().when(todoRepository).saveTodo(request, 1L);
 
         todoService.saveTodo(request, principal);
 
-        verify(todoRepository).saveTodo(request, 1L);
+        verify(todoRepository, times(1)).saveTodo(request, 1L);
     }
 
     @Test
-    void updateTodo_ShouldUpdateTodo() {
-
-        TodoUpdateRequest request = new TodoUpdateRequest(1L, "Updated Title", "Updated Desc", true);
-        User user = getUser();
-        when(principal.getName()).thenReturn(user.getUsername());
-        when(userRepository.findByUsername(user.getUsername())).thenReturn(Optional.of(user));
-        when(todoRepository.updateTodo(request, user.getId())).thenReturn(1);
+    void updateTodo_ShouldUpdateAndReturnResponse() {
+        TodoUpdateRequest request = new TodoUpdateRequest(1L, "Updated Task","sdfsd", true);
+        when(todoRepository.updateTodo(request, 1L)).thenReturn(1);
 
         TodoResponse response = todoService.updateTodo(request, principal);
 
+        assertNotNull(response);
         assertEquals(request.getId(), response.getId());
         assertEquals(request.getTitle(), response.getTitle());
-        assertEquals(request.getDescription(), response.getDescription());
-        assertTrue(response.isCompleted());
-
-        verify(todoRepository).updateTodo(request, user.getId());
+        assertEquals(request.isCompleted(), response.isCompleted());
+        verify(todoRepository, times(1)).updateTodo(request, 1L);
     }
-
 
     @Test
-    void allTodosByPrincipal_ShouldReturnTodos() {
-        List<TodoResponse> todos = List.of(getTodoResponse());
-        CustomUserDetails userDetails = new CustomUserDetails(1L, "testUser", "password", new ArrayList<>());
-        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null);
+    void updateTodo_ShouldThrowException_WhenTodoNotFound() {
+        TodoUpdateRequest request = new TodoUpdateRequest(1L, "Updated Task","sdfsd", true);
+        when(todoRepository.updateTodo(request, 1L)).thenReturn(0);
 
-        when(todoRepository.allTodosByUserIdWithPagination(eq(1L), anyInt(), anyInt())).thenReturn(todos);
-
-        List<TodoResponse> result = todoService.allTodosByPrincipalWithPagination(authToken, 1, 10);
-
-        assertEquals(1, result.size());
-        verify(todoRepository).allTodosByUserIdWithPagination(1L, 1, 10);
+        assertThrows(TodoNotFoundException.class, () -> todoService.updateTodo(request, principal));
     }
 
+    @Test
+    void allTodosByPrincipalWithPagination_ShouldReturnTodos() {
+        when(todoRepository.allTodosByUserIdWithPagination(1L, 0, 10)).thenReturn(List.of(getTodoResponse()));
 
+        List<TodoResponse> todos = todoService.allTodosByPrincipalWithPagination(principal, 0, 10);
 
+        assertEquals(1, todos.size());
+        verify(todoRepository, times(1)).allTodosByUserIdWithPagination(1L, 0, 10);
+    }
 
     @Test
     void allTodosCompletedByPrincipal_ShouldReturnCompletedTodos() {
-        List<TodoResponse> todos = List.of(getTodoResponse());
-        when(principal.getName()).thenReturn("testUser");
-        when(userRepository.findByUsername("testUser")).thenReturn(Optional.of(getUser()));
-        when(todoRepository.allTodosCompletedByUserId(1L)).thenReturn(todos);
+        when(todoRepository.allTodosCompletedByUserId(1L)).thenReturn(List.of(getTodoResponse()));
 
-        List<TodoResponse> result = todoService.allTodosCompletedByPrincipal(principal);
+        List<TodoResponse> todos = todoService.allTodosCompletedByPrincipal(principal);
 
-        assertEquals(1, result.size());
-        verify(todoRepository).allTodosCompletedByUserId(1L);
+        assertEquals(1, todos.size());
+        assertTrue(todos.get(0).isCompleted());
+        verify(todoRepository, times(1)).allTodosCompletedByUserId(1L);
     }
 
     @Test
     void findTodoById_ShouldReturnTodo() {
-        TodoResponse todo = getTodoResponse();
-        when(principal.getName()).thenReturn("testUser");
-        when(userRepository.findByUsername("testUser")).thenReturn(Optional.of(getUser()));
-        when(todoRepository.findTodoById(1L, 1L)).thenReturn(Optional.of(todo));
+        User user = getUser();
+        when(todoRepository.findTodoById(1L, 1L)).thenReturn(Optional.of(getTodoResponse()));
 
-        TodoResponse result = todoService.findTodoById(1L, principal);
+        TodoResponse todo = todoService.findTodoById(1L, principal);
 
-        assertEquals(todo, result);
-        verify(todoRepository).findTodoById(1L, 1L);
+        assertNotNull(todo);
+        assertEquals(1L, todo.getId());
+        verify(todoRepository, times(1)).findTodoById(1L, 1L);
     }
 
     @Test
-    void findTodoById_ShouldThrowException_WhenUserNotFound() {
-        when(principal.getName()).thenReturn("testUser");
-        when(userRepository.findByUsername("testUser")).thenReturn(Optional.empty());
+    void findTodoById_ShouldThrowException_WhenNotFound() {
+        User user = getUser();
+        when(todoRepository.findTodoById(1L, 1L)).thenReturn(Optional.empty());
 
-        assertThrows(NoSuchElementException.class, () -> todoService.findTodoById(1L, principal));
+        assertThrows(TodoNotFoundException.class, () -> todoService.findTodoById(1L, principal));
     }
 
     private User getUser() {
