@@ -11,13 +11,10 @@ import java.util.List;
 import java.util.Optional;
 @Repository
 public interface TodoRepository extends JpaRepository<Todo, Long> {
-
-
     Optional<Todo> findByIdAndUserId(Long id, Long userId);
 
     Page<Todo> findAllByUserId(Long userId, Pageable pageable);
 
     @Query("SELECT t FROM Todo t WHERE t.userId = :userId AND t.completed = true")
     List<Todo> findCompletedTodosByUserId(@Param("userId") Long userId);
-
 }
