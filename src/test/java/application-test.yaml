@@ -1,8 +1,0 @@
-spring:
-  profiles: test
-  datasource:
-    url: jdbc:tc:postgresql:15.2:///testdb
-    username: testuser
-    password: testpass
-  liquibase:
-    enabled: false
