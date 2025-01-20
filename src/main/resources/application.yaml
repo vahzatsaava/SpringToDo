@@ -1,0 +1,32 @@
+server:
+  port: 8088
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/todo_db
+    username: user
+    password: password
+    driver-class-name: org.postgresql.Driver
+
+  liquibase:
+    change-log: classpath:db/changelog-master.yaml
+    enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  api-docs:
+    path: /v3/api-docs
+
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  cache:
+    type: redis
+
+jwt:
+  secret: SecretKeyForJWTGeneration12345678
+  expiration: 36000000
